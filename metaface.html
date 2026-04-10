@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceMetrics BD — Celebrity Evaluation Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05050d;
+    --surface: rgba(255,255,255,0.04);
+    --surface2: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --accent: #6c63ff;
+    --accent2: #00d4ff;
+    --accent3: #ff6b9d;
+    --text: #f0f0ff;
+    --muted: rgba(240,240,255,0.45);
+    --gold: #ffd700;
+    --success: #00e676;
+    --danger: #ff5252;
+    --glow: 0 0 30px rgba(108,99,255,0.25);
+    --glow2: 0 0 20px rgba(0,212,255,0.2);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── CANVAS BG ── */
+  #bg-canvas {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    display: none;
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    animation: fadeIn 0.5s ease;
+  }
+  .screen.active { display: flex; flex-direction: column; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes checkPop {
+    0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+    60% { transform: scale(1.3) rotate(5deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  @keyframes starPop {
+    0% { transform: scale(0); }
+    70% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+  }
+  @keyframes toastIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes toastOut {
+    from { transform: translateX(0); opacity: 1; }
+    to   { transform: translateX(120%); opacity: 0; }
+  }
+  @keyframes glitch {
+    0%,100% { clip-path: inset(0 0 100% 0); }
+    20% { clip-path: inset(10% 0 60% 0); transform: translateX(-4px); }
+    40% { clip-path: inset(50% 0 20% 0); transform: translateX(4px); }
+    60% { clip-path: inset(30% 0 40% 0); transform: translateX(-2px); }
+    80% { clip-path: inset(70% 0 5% 0); transform: translateX(2px); }
+  }
+
+  /* ── GLASS CARD ── */
+  .glass {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+  }
+  .glass-lg {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border-radius: 24px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5), var(--glow);
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 32px;
+    border: none; border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff;
+    box-shadow: 0 4px 24px rgba(108,99,255,0.4);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(108,99,255,0.55); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+  .btn-danger {
+    background: linear-gradient(135deg, #ff5252, #c62828);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(255,82,82,0.3);
+  }
+  .btn-danger:hover { transform: translateY(-2px); }
+  .btn-success {
+    background: linear-gradient(135deg, #00e676, #00897b);
+    color: #000;
+    box-shadow: 0 4px 16px rgba(0,230,118,0.3);
+  }
+  .btn-sm { padding: 9px 20px; font-size: 13px; }
+
+  /* ── INPUTS ── */
+  .input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  }
+  .input::placeholder { color: var(--muted); }
+  textarea.input { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+  /* ── LABEL ── */
+  .label {
+    display: block;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; top: 24px; right: 24px; z-index: 9999;
+    background: rgba(15,15,30,0.95);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 14px; font-weight: 500;
+    max-width: 320px;
+    display: none;
+  }
+  #toast.show { display: block; animation: toastIn 0.4s ease; }
+  #toast.hide { animation: toastOut 0.4s ease forwards; }
+
+  /* ════════════════════════════════
+     SCREEN 1 — LANDING
+  ════════════════════════════════ */
+  #screen-landing {
+    align-items: center; justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .landing-inner { max-width: 520px; width: 100%; }
+  .brand-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(108,99,255,0.12);
+    border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .brand-badge span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 1.5s infinite; }
+  .hero-title {
+    font-size: clamp(38px, 8vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 16px;
+    letter-spacing: -0.03em;
+  }
+  .hero-title .grad {
+    background: linear-gradient(135deg, var(--accent2) 0%, var(--accent) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 16px; color: var(--muted); line-height: 1.7;
+    margin-bottom: 40px;
+  }
+  .landing-cards {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-bottom: 36px;
+  }
+  .stat-card {
+    padding: 20px;
+    text-align: left;
+  }
+  .stat-card .num {
+    font-size: 32px; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-card .desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .landing-btns { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ════════════════════════════════
+     SCREEN 2 — PARTICIPANT LOGIN
+  ════════════════════════════════ */
+  #screen-login {
+    align-items: center; justify-content: center; padding: 40px 20px;
+  }
+  .login-card { max-width: 440px; width: 100%; padding: 40px; }
+  .screen-title { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .screen-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; line-height: 1.6; }
+  .form-group { margin-bottom: 20px; }
+  .resume-banner {
+    background: rgba(0,230,118,0.08);
+    border: 1px solid rgba(0,230,118,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--success);
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  /* ════════════════════════════════
+     SCREEN 3 — EVALUATION
+  ════════════════════════════════ */
+  #screen-eval { padding: 0; }
+  .eval-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(5,5,13,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .eval-header-left { display: flex; align-items: center; gap: 16px; }
+  .eval-logo { font-size: 14px; font-weight: 700; color: var(--accent); font-family: 'Space Mono', monospace; }
+  .participant-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 600;
+    color: var(--muted);
+  }
+  .eval-progress-wrap { flex: 1; max-width: 300px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-family: 'Space Mono', monospace; }
+  .progress-bar-bg { height: 6px; background: rgba(255,255,255,0.07); border-radius: 100px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+
+  .eval-body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px 60px;
+    gap: 32px;
+  }
+
+  /* Image Card */
+  .image-card {
+    max-width: 420px; width: 100%;
+    position: relative;
+  }
+  .image-number {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    text-align: center; margin-bottom: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .image-frame {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), var(--glow);
+  }
+  .image-frame img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: opacity 0.4s ease;
+  }
+  .image-frame img.loading { opacity: 0; }
+  .image-frame img.loaded { opacity: 1; }
+  .image-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(5,5,13,0.7) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .img-loader {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(5,5,13,0.5);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Rating Panel */
+  .rating-panel {
+    max-width: 420px; width: 100%; padding: 28px;
+  }
+  .rating-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+
+  /* Star Rating */
+  .stars { display: flex; gap: 8px; margin-bottom: 24px; }
+  .star {
+    font-size: 36px; cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    filter: grayscale(1) brightness(0.4);
+    user-select: none;
+    line-height: 1;
+  }
+  .star:hover, .star.active {
+    filter: grayscale(0) brightness(1.1) drop-shadow(0 0 8px rgba(255,215,0,0.6));
+    transform: scale(1.2);
+  }
+  .star.active { animation: starPop 0.25s ease; }
+  .star.hov { filter: grayscale(0) brightness(0.85); transform: scale(1.1); }
+
+  .rating-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: -16px; margin-bottom: 24px; }
+
+  .comment-section { margin-bottom: 24px; }
+  .char-count { text-align: right; font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
+
+  .nav-btns { display: flex; gap: 12px; }
+  .nav-btns .btn { flex: 1; }
+
+  /* ════════════════════════════════
+     SCREEN 4 — COMPLETE
+  ════════════════════════════════ */
+  #screen-complete {
+    align-items: center; justify-content: center; padding: 40px 20px;
+    text-align: center;
+  }
+  .complete-card { max-width: 480px; width: 100%; padding: 48px 40px; }
+  .check-icon {
+    font-size: 72px; display: block; margin-bottom: 24px;
+    animation: checkPop 0.6s cubic-bezier(.34,1.56,.64,1) 0.2s both;
+  }
+  .complete-title { font-size: 32px; font-weight: 800; margin-bottom: 12px; }
+  .complete-sub { color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 32px; }
+  .complete-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  .cstat {
+    padding: 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+  }
+  .cstat .val { font-size: 24px; font-weight: 800; color: var(--accent2); }
+  .cstat .key { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  /* ════════════════════════════════
+     SCREEN 5 — ADMIN
+  ════════════════════════════════ */
+  #screen-admin { padding: 32px 20px 60px; }
+  .admin-inner { max-width: 900px; margin: 0 auto; }
+  .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+  .admin-title { font-size: 22px; font-weight: 700; }
+  .tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 28px; }
+  .tab-btn {
+    flex: 1; padding: 10px; border: none; background: transparent;
+    color: var(--muted); font-family: 'Outfit', sans-serif;
+    font-size: 14px; font-weight: 600; border-radius: 9px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--surface2); color: var(--text); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+  /* Setup tab */
+  .url-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .celeb-row {
+    padding: 16px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .celeb-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .celeb-preview {
+    width: 100%; height: 120px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .celeb-preview img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s;
+  }
+  .celeb-preview .preview-placeholder {
+    font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace;
+    text-align: center; padding: 12px;
+  }
+  .celeb-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    color: var(--accent);
+    background: rgba(108,99,255,0.12);
+    border-radius: 6px; padding: 3px 8px;
+  }
+  .celeb-urls { display: flex; flex-direction: column; gap: 8px; }
+  .url-input-row { display: flex; gap: 8px; align-items: center; }
+  .url-num { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); min-width: 20px; }
+
+  /* Results tab */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .scard {
+    padding: 20px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .scard .sv { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .scard .sk { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .results-table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--border); }
+  .results-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  .results-table th {
+    background: rgba(255,255,255,0.04);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .results-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .results-table tr:last-child td { border-bottom: none; }
+  .results-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .star-cell { color: var(--gold); letter-spacing: 2px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* Admin login */
+  #screen-admin-login {
+    align-items: center; justify-content: center; padding: 40px 20px;
+  }
+  .admin-login-card { max-width: 380px; width: 100%; padding: 40px; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* ── BACK LINK ── */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--muted); font-size: 13px; cursor: pointer;
+    margin-bottom: 24px;
+    transition: color 0.2s;
+    background: none; border: none; font-family: 'Outfit', sans-serif;
+  }
+  .back-link:hover { color: var(--text); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .url-grid { grid-template-columns: 1fr; }
+    .landing-cards { grid-template-columns: 1fr 1fr; }
+    .complete-stats { grid-template-columns: 1fr 1fr 1fr; }
+    .eval-header { padding: 12px 16px; }
+    .eval-header .eval-progress-wrap { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: LANDING
+═══════════════════════════════════════ -->
+<section id="screen-landing" class="screen active">
+  <div class="landing-inner">
+    <div class="brand-badge"><span></span> Research Platform · BD 2025</div>
+    <h1 class="hero-title">Face<span class="grad">Metrics</span><br>BD</h1>
+    <p class="hero-sub">A structured facial evaluation system for Bangladeshi celebrity imagery. Built for academic research and subjective analysis.</p>
+    <div class="landing-cards">
+      <div class="stat-card glass">
+        <div class="num">100</div>
+        <div class="desc">Images per session</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="num">20</div>
+        <div class="desc">Celebrity subjects</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="num">30</div>
+        <div class="desc">Evaluators needed</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="num">5★</div>
+        <div class="desc">Rating scale</div>
+      </div>
+    </div>
+    <div class="landing-btns">
+      <button class="btn btn-primary" onclick="showScreen('screen-login')" style="font-size:16px; padding:16px;">
+        Begin Evaluation →
+      </button>
+      <button class="btn btn-ghost" onclick="showAdminLogin()">
+        Admin Panel
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: PARTICIPANT LOGIN
+═══════════════════════════════════════ -->
+<section id="screen-login" class="screen">
+  <div style="display:flex;align-items:center;justify-content:center;flex:1;padding:40px 20px;">
+    <div class="login-card glass-lg">
+      <button class="back-link" onclick="showScreen('screen-landing')">← Back</button>
+      <h2 class="screen-title">Participant Login</h2>
+      <p class="screen-sub">Enter your details to begin or resume your evaluation session.</p>
+      <div id="resume-banner" class="resume-banner">
+        ✓ Progress found — you'll resume from where you left off.
+      </div>
+      <div class="form-group">
+        <label class="label">Your Full Name</label>
+        <input id="inp-name" class="input" type="text" placeholder="e.g. Rahim Uddin" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="label">Participant ID</label>
+        <input id="inp-pid" class="input" type="text" placeholder="e.g. P001 or your student ID" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="startEval()">
+        Start / Resume Session →
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: EVALUATION
+═══════════════════════════════════════ -->
+<section id="screen-eval" class="screen">
+  <header class="eval-header">
+    <div class="eval-header-left">
+      <div class="eval-logo">FM/BD</div>
+      <div class="participant-chip" id="eval-participant-chip">— </div>
+    </div>
+    <div class="eval-progress-wrap">
+      <div class="progress-label">
+        <span>Progress</span>
+        <span id="prog-label">0 / 100</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="prog-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="saveAndExit()">Save & Exit</button>
+  </header>
+
+  <div class="eval-body">
+    <div class="image-card">
+      <div class="image-number" id="img-counter">Image 1 of 100</div>
+      <div class="image-frame">
+        <img id="eval-img" src="" alt="Celebrity face" class="loading">
+        <div class="image-overlay"></div>
+        <div class="img-loader" id="img-loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <div class="rating-panel glass-lg">
+      <div class="rating-title">Rate this image</div>
+      <div class="stars" id="stars-row">
+        <span class="star" data-v="1" onclick="setStar(1)" onmouseover="hoverStar(1)" onmouseout="unhoverStar()">★</span>
+        <span class="star" data-v="2" onclick="setStar(2)" onmouseover="hoverStar(2)" onmouseout="unhoverStar()">★</span>
+        <span class="star" data-v="3" onclick="setStar(3)" onmouseover="hoverStar(3)" onmouseout="unhoverStar()">★</span>
+        <span class="star" data-v="4" onclick="setStar(4)" onmouseover="hoverStar(4)" onmouseout="unhoverStar()">★</span>
+        <span class="star" data-v="5" onclick="setStar(5)" onmouseover="hoverStar(5)" onmouseout="unhoverStar()">★</span>
+      </div>
+      <div class="nav-btns">
+        <button class="btn btn-ghost" id="btn-prev" onclick="goToImage(-1)" style="flex:0 0 auto;padding:14px 20px;">←</button>
+        <button class="btn btn-primary" id="btn-next" onclick="submitAndNext()" disabled>
+          Submit & Next →
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: COMPLETE
+═══════════════════════════════════════ -->
+<section id="screen-complete" class="screen">
+  <div class="complete-card glass-lg">
+    <span class="check-icon">🎉</span>
+    <h2 class="complete-title">Evaluation Complete!</h2>
+    <p class="complete-sub" id="complete-msg">Thank you for completing all 100 image evaluations. Your responses have been saved.</p>
+    <div class="complete-stats">
+      <div class="cstat"><div class="val" id="cs-images">100</div><div class="key">Images</div></div>
+      <div class="cstat"><div class="val" id="cs-avg">—</div><div class="key">Avg Rating</div></div>
+      <div class="cstat"><div class="val" id="cs-time">—</div><div class="key">Session</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn btn-ghost" onclick="showScreen('screen-landing')">← Back to Home</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: ADMIN LOGIN
+═══════════════════════════════════════ -->
+<section id="screen-admin-login" class="screen">
+  <div class="admin-login-card glass-lg">
+    <button class="back-link" onclick="showScreen('screen-landing')">← Back</button>
+    <h2 class="screen-title">Admin Access</h2>
+    <p class="screen-sub">Enter the admin password to manage images and view results.</p>
+    <div class="form-group">
+      <label class="label">Admin Password</label>
+      <input id="inp-admin-pw" class="input" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkAdmin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="checkAdmin()">Access Admin Panel →</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN: ADMIN PANEL
+═══════════════════════════════════════ -->
+<section id="screen-admin" class="screen">
+  <div class="admin-inner">
+    <div class="admin-header">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;font-family:'Space Mono',monospace;">ADMIN PANEL</div>
+        <div class="admin-title">FaceMetrics BD — Control Center</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-success btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑 Clear All Data</button>
+        <button class="btn btn-ghost btn-sm" onclick="showScreen('screen-landing')">← Exit</button>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('setup')">Image Setup</button>
+      <button class="tab-btn" onclick="switchTab('results')">Results & Analytics</button>
+    </div>
+
+    <!-- SETUP TAB -->
+    <div id="tab-setup" class="tab-panel active">
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px;line-height:1.7;">
+        Enter image URLs for all 20 celebrities (5 photos each = 100 total). Each row represents one celebrity. Use direct image URLs (ending in .jpg/.png or from an image host).
+      </p>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="saveImages()">Save All Images</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadDemoImages()">Load Demo Data</button>
+      </div>
+      <div class="url-grid" id="url-grid"></div>
+    </div>
+
+    <!-- RESULTS TAB -->
+    <div id="tab-results" class="tab-panel">
+      <div class="stats-row" id="stats-row"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+        <div style="font-weight:600;">All Responses</div>
+        <div style="display:flex;gap:8px;">
+          <select id="filter-pid" class="input" style="width:auto;padding:8px 12px;font-size:13px;" onchange="renderResults()">
+            <option value="">All Participants</option>
+          </select>
+          <select id="filter-celeb" class="input" style="width:auto;padding:8px 12px;font-size:13px;" onchange="renderResults()">
+            <option value="">All Celebrities</option>
+          </select>
+        </div>
+      </div>
+      <div class="results-table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Participant</th>
+              <th>P.ID</th>
+              <th>Celeb ID</th>
+              <th>Image</th>
+              <th>Rating</th>
+              <th>Comment</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────── -->
+<script>
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+const ADMIN_PW = 'admin123';
+const STORE_IMAGES = 'fm_images';       // [{url, celebId}] x100
+const STORE_SESSIONS = 'fm_sessions';   // {[pid]: {name,pid,order,responses,startTime}}
+const STORE_RESULTS = 'fm_results';     // [{pid,name,celebId,url,rating,comment,ts}]
+
+let currentPID = null;
+let currentName = null;
+let imageOrder = [];   // array of {url, celebId, origIdx}
+let currentIdx = 0;    // index in imageOrder
+let selectedStar = 0;
+let sessionStart = null;
+
+/* ════════════════════════════════════════
+   CANVAS BACKGROUND
+════════════════════════════════════════ */
+(function() {
+  const c = document.getElementById('bg-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, particles = [];
+  function resize() { W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  for(let i=0;i<80;i++) particles.push({
+    x: Math.random()*1920, y: Math.random()*1080,
+    r: Math.random()*1.5+0.3,
+    vx: (Math.random()-0.5)*0.25,
+    vy: (Math.random()-0.5)*0.25,
+    o: Math.random()*0.4+0.1
+  });
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0) p.x=W; if(p.x>W) p.x=0;
+      if(p.y<0) p.y=H; if(p.y>H) p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(108,99,255,${p.o})`;
+      ctx.fill();
+    });
+    // grid lines
+    ctx.strokeStyle = 'rgba(108,99,255,0.04)';
+    ctx.lineWidth = 1;
+    for(let x=0;x<W;x+=80) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=0;y<H;y+=80) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showAdminLogin() { showScreen('screen-admin-login'); }
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+let toastTimer;
+function showToast(msg, duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{
+    t.classList.add('hide');
+    setTimeout(()=>t.className='', 400);
+  }, duration);
+}
+
+/* ════════════════════════════════════════
+   STORAGE HELPERS
+════════════════════════════════════════ */
+function getImages() { try { return JSON.parse(localStorage.getItem(STORE_IMAGES)||'[]'); } catch{return[];} }
+function saveImagesStore(arr) { localStorage.setItem(STORE_IMAGES, JSON.stringify(arr)); }
+function getSessions() { try { return JSON.parse(localStorage.getItem(STORE_SESSIONS)||'{}'); } catch{return{};} }
+function saveSession(pid, data) {
+  const s = getSessions(); s[pid] = data;
+  localStorage.setItem(STORE_SESSIONS, JSON.stringify(s));
+}
+function getResults() { try { return JSON.parse(localStorage.getItem(STORE_RESULTS)||'[]'); } catch{return[];} }
+function saveResult(r) {
+  const arr = getResults(); arr.push(r);
+  localStorage.setItem(STORE_RESULTS, JSON.stringify(arr));
+}
+
+/* ════════════════════════════════════════
+   RANDOMIZATION (no consecutive same celeb)
+════════════════════════════════════════ */
+function shuffleNoConsecutive(arr) {
+  // Fisher-Yates then fix
+  let a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  // Fix consecutive
+  let attempts = 0;
+  outer: while(attempts++ < 5000) {
+    let ok = true;
+    for(let i=1;i<a.length;i++){
+      if(a[i].celebId === a[i-1].celebId){
+        // find swap candidate
+        let swapped = false;
+        for(let j=i+1;j<a.length;j++){
+          if(a[j].celebId !== a[i-1].celebId && (j+1>=a.length || a[j+1]?.celebId!==a[i].celebId)){
+            [a[i],a[j]]=[a[j],a[i]];
+            swapped=true; break;
+          }
+        }
+        if(!swapped){ ok=false; break; }
+      }
+    }
+    if(ok) break outer;
+  }
+  return a;
+}
+
+/* ════════════════════════════════════════
+   LOGIN / RESUME
+════════════════════════════════════════ */
+document.getElementById('inp-pid').addEventListener('input', checkResume);
+function checkResume() {
+  const pid = document.getElementById('inp-pid').value.trim();
+  const banner = document.getElementById('resume-banner');
+  if(!pid) { banner.style.display='none'; return; }
+  const s = getSessions();
+  if(s[pid] && s[pid].responses && Object.keys(s[pid].responses).length > 0) {
+    banner.style.display='block';
+    const done = Object.keys(s[pid].responses).length;
+    banner.textContent = `✓ Progress found — resuming from image ${done+1} of 100.`;
+  } else {
+    banner.style.display='none';
+  }
+}
+
+function startEval() {
+  const name = document.getElementById('inp-name').value.trim();
+  const pid  = document.getElementById('inp-pid').value.trim();
+  if(!name || !pid) { showToast('Please enter your name and participant ID.'); return; }
+
+  const images = getImages();
+  if(images.length < 100) {
+    showToast('⚠ No images loaded yet. Contact the admin.'); return;
+  }
+
+  currentPID = pid; currentName = name;
+  const sessions = getSessions();
+
+  if(sessions[pid]) {
+    // Resume
+    const sess = sessions[pid];
+    imageOrder = sess.order;
+    currentIdx = Object.keys(sess.responses||{}).length;
+    sessionStart = Date.now();
+    if(currentIdx >= 100) { showComplete(sessions[pid]); return; }
+    showToast(`Welcome back, ${name}! Resuming from image ${currentIdx+1}.`);
+  } else {
+    // New session
+    imageOrder = shuffleNoConsecutive(images.map((img,i)=>({...img, origIdx:i})));
+    saveSession(pid, { name, pid, order: imageOrder, responses: {}, startTime: Date.now() });
+    currentIdx = 0;
+    sessionStart = Date.now();
+    showToast(`Welcome, ${name}! Let's begin.`);
+  }
+
+  document.getElementById('eval-participant-chip').textContent = `${name} · ${pid}`;
+  showScreen('screen-eval');
+  renderEvalImage();
+}
+
+/* ════════════════════════════════════════
+   EVALUATION
+════════════════════════════════════════ */
+function renderEvalImage() {
+  if(currentIdx >= imageOrder.length) { finalizeEval(); return; }
+  const item = imageOrder[currentIdx];
+  const total = imageOrder.length;
+  const done  = currentIdx;
+
+  // progress
+  document.getElementById('prog-label').textContent = `${done} / ${total}`;
+  document.getElementById('prog-bar').style.width = `${(done/total)*100}%`;
+  document.getElementById('img-counter').textContent = `Image ${done+1} of ${total}`;
+
+  // image
+  const img = document.getElementById('eval-img');
+  const loader = document.getElementById('img-loader');
+  img.className = 'loading';
+  loader.style.display = 'flex';
+  img.src = '';
+  img.onload = () => { img.className = 'loaded'; loader.style.display = 'none'; };
+  img.onerror = () => { img.src = 'https://placehold.co/400x533/0a0a1a/6c63ff?text=Image+Not+Found'; img.className='loaded'; loader.style.display='none'; };
+  img.src = item.url;
+
+  // reset form
+  selectedStar = 0;
+  renderStars(0);
+  document.getElementById('btn-next').disabled = true;
+
+  // check if this image was already rated (going back)
+  const sess = getSessions()[currentPID];
+  if(sess && sess.responses && sess.responses[currentIdx] !== undefined) {
+    const prev = sess.responses[currentIdx];
+    setStar(prev.rating);
+  }
+
+  // prev button
+  document.getElementById('btn-prev').style.visibility = currentIdx > 0 ? 'visible' : 'hidden';
+}
+
+function setStar(v) {
+  selectedStar = v;
+  renderStars(v);
+  document.getElementById('btn-next').disabled = false;
+}
+
+function renderStars(v) {
+  document.querySelectorAll('.star').forEach((s,i)=>{
+    s.classList.toggle('active', i < v);
+    s.classList.remove('hov');
+  });
+}
+
+function hoverStar(v) {
+  document.querySelectorAll('.star').forEach((s,i)=>{
+    s.classList.toggle('hov', i < v && i >= selectedStar);
+  });
+}
+function unhoverStar() {
+  document.querySelectorAll('.star').forEach(s => s.classList.remove('hov'));
+}
+
+function updateCharCount() {
+  const v = document.getElementById('eval-comment').value.length;
+  document.getElementById('char-count').textContent = `${v} / 300`;
+}
+
+function goToImage(dir) {
+  const newIdx = currentIdx + dir;
+  if(newIdx < 0 || newIdx >= imageOrder.length) return;
+  currentIdx = newIdx;
+  renderEvalImage();
+}
+
+function submitAndNext() {
+  if(selectedStar === 0) { showToast('Please select a star rating.'); return; }
+  const comment = '';
+  const item = imageOrder[currentIdx];
+
+  // Save result
+  const result = {
+    pid: currentPID, name: currentName,
+    celebId: item.celebId, url: item.url,
+    rating: selectedStar, comment,
+    ts: new Date().toISOString()
+  };
+  saveResult(result);
+
+  // Update session
+  const sess = getSessions()[currentPID];
+  if(!sess.responses) sess.responses = {};
+  sess.responses[currentIdx] = { rating: selectedStar, comment };
+  saveSession(currentPID, sess);
+
+  currentIdx++;
+  if(currentIdx >= imageOrder.length) { finalizeEval(); return; }
+  renderEvalImage();
+}
+
+function saveAndExit() {
+  showToast('Progress saved! You can resume anytime.');
+  setTimeout(()=>showScreen('screen-landing'), 1200);
+}
+
+function finalizeEval() {
+  const sess = getSessions()[currentPID];
+  showComplete(sess);
+}
+
+function showComplete(sess) {
+  const results = getResults().filter(r => r.pid === currentPID);
+  const avg = results.length ? (results.reduce((a,b)=>a+b.rating,0)/results.length).toFixed(1) : '—';
+  const elapsed = sess.startTime ? Math.round((Date.now()-sess.startTime)/60000) : '—';
+  document.getElementById('complete-msg').textContent = `Thank you, ${currentName}! All ${results.length} image evaluations have been saved successfully.`;
+  document.getElementById('cs-images').textContent = results.length;
+  document.getElementById('cs-avg').textContent = avg;
+  document.getElementById('cs-time').textContent = elapsed === '—' ? '—' : `${elapsed}m`;
+  showScreen('screen-complete');
+}
+
+/* ════════════════════════════════════════
+   ADMIN
+════════════════════════════════════════ */
+function checkAdmin() {
+  const pw = document.getElementById('inp-admin-pw').value;
+  if(pw === ADMIN_PW) {
+    document.getElementById('inp-admin-pw').value = '';
+    showScreen('screen-admin');
+    if(getImages().length < 100) loadDemoImages();
+    else buildURLGrid();
+    renderResults();
+    renderAdminStats();
+  } else {
+    showToast('❌ Incorrect password.');
+  }
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=> b.classList.toggle('active', (i===0&&t==='setup')||(i===1&&t==='results')));
+  document.getElementById('tab-setup').classList.toggle('active', t==='setup');
+  document.getElementById('tab-results').classList.toggle('active', t==='results');
+  if(t==='results') { renderResults(); renderAdminStats(); }
+}
+
+/* ── Build URL grid ── */
+function buildURLGrid() {
+  const saved = getImages();
+  const grid = document.getElementById('url-grid');
+  grid.innerHTML = '';
+  for(let c=1;c<=20;c++){
+    const celebImgs = saved.filter(i=>i.celebId===c);
+    // Pick preview: first saved URL, or random picsum
+    const previewUrl = celebImgs[0]?.url || `https://picsum.photos/seed/admin${c}${Date.now()}/300/120`;
+    const row = document.createElement('div');
+    row.className = 'celeb-row glass';
+    row.innerHTML = `
+      <div class="celeb-row-head">
+        <div class="celeb-badge">Celebrity #${c}</div>
+        <span style="font-size:12px;color:var(--muted)">${celebImgs.length}/5 photos</span>
+      </div>
+      <div class="celeb-preview">
+        <img src="${previewUrl}" alt="Preview" loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+          onload="this.style.opacity=1">
+        <div class="preview-placeholder" style="display:none">No image</div>
+      </div>
+      <div class="celeb-urls">
+        ${[0,1,2,3,4].map(j=>`
+          <div class="url-input-row">
+            <span class="url-num">${j+1}</span>
+            <input class="input" style="font-size:12px;padding:8px 12px;" data-celeb="${c}" data-idx="${j}"
+              type="url" placeholder="https://image-url.jpg"
+              value="${celebImgs[j]?.url||''}">
+          </div>
+        `).join('')}
+      </div>
+    `;
+    grid.appendChild(row);
+  }
+}
+
+function saveImages() {
+  const inputs = document.querySelectorAll('[data-celeb]');
+  const arr = [];
+  inputs.forEach(inp=>{
+    const url = inp.value.trim();
+    const celebId = parseInt(inp.dataset.celeb);
+    if(url) arr.push({url, celebId});
+  });
+  if(arr.length < 100) {
+    showToast(`⚠ Only ${arr.length} URLs entered. Need 100 total.`);
+    return;
+  }
+  saveImagesStore(arr);
+  showToast('✓ All 100 images saved successfully!');
+  buildURLGrid();
+}
+
+const DEMO_URLS = [
+  'https://manforhimself.com/wp-content/uploads/2025/03/zayn-malik-hair-tousled-slick-back-hairstyle-man-for-himself-2-600x600.jpg',
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTqYAFG_RUSOiXTkoYcW_iW9hcv_e8WUpmnhEARyVk0DrtLHamFJ4McOv-Tat_uRwcMg7pbFaTqspMZds05Zct_PB1oUl_jvElZp2eEEy0&s=10',
+  'https://static.wikia.nocookie.net/evil/images/4/4c/Eren_meets_Yeagerists.png/revision/latest?cb=20221017170102&path-prefix=pl',
+  'https://static.wikitide.net/deathbattlewiki/b/b2/Portrait.lightyagami.png',
+  'https://i.ytimg.com/vi/xzEEx2Kkzbo/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLA2khN-HjbUF9JdyMI0BVIlvkpWNQ'
+];
+
+function loadDemoImages() {
+  // Build pool of 100 URLs (each of the 5 appears exactly 20 times)
+  const pool = [];
+  for(let i=0;i<100;i++) pool.push(DEMO_URLS[i % 5]);
+  // Fisher-Yates shuffle for true randomness
+  for(let i=pool.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pool[i],pool[j]]=[pool[j],pool[i]];
+  }
+  const arr = [];
+  let idx=0;
+  for(let c=1;c<=20;c++){
+    for(let j=0;j<5;j++){
+      arr.push({ url: pool[idx++], celebId: c });
+    }
+  }
+  saveImagesStore(arr);
+  buildURLGrid();
+  showToast('✓ All 100 slots filled with the 5 images randomly!');
+}
+
+/* ── Results ── */
+function renderAdminStats() {
+  const results = getResults();
+  const sessions = getSessions();
+  const participants = Object.keys(sessions).length;
+  const avgRating = results.length ? (results.reduce((a,b)=>a+b.rating,0)/results.length).toFixed(2) : '—';
+  const completedParts = Object.values(sessions).filter(s=>Object.keys(s.responses||{}).length>=100).length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="scard"><div class="sv">${results.length}</div><div class="sk">Total Responses</div></div>
+    <div class="scard"><div class="sv">${participants}</div><div class="sk">Participants</div></div>
+    <div class="scard"><div class="sv">${completedParts}</div><div class="sk">Completed</div></div>
+    <div class="scard"><div class="sv">${avgRating}</div><div class="sk">Avg Rating</div></div>
+  `;
+
+  // Populate filters
+  const pidSel = document.getElementById('filter-pid');
+  const celebSel = document.getElementById('filter-celeb');
+  const pids = [...new Set(results.map(r=>r.pid))];
+  const celebs = [...new Set(results.map(r=>r.celebId))].sort((a,b)=>a-b);
+  pidSel.innerHTML = '<option value="">All Participants</option>' + pids.map(p=>`<option value="${p}">${p}</option>`).join('');
+  celebSel.innerHTML = '<option value="">All Celebrities</option>' + celebs.map(c=>`<option value="${c}">Celebrity #${c}</option>`).join('');
+}
+
+function renderResults() {
+  const results = getResults();
+  const pidFilter = document.getElementById('filter-pid')?.value || '';
+  const celebFilter = document.getElementById('filter-celeb')?.value || '';
+
+  let filtered = results;
+  if(pidFilter) filtered = filtered.filter(r=>r.pid===pidFilter);
+  if(celebFilter) filtered = filtered.filter(r=>r.celebId==celebFilter);
+
+  const tbody = document.getElementById('results-tbody');
+  if(filtered.length===0){
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📊</div><div>No responses yet</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.slice(-200).reverse().map((r,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:11px">${filtered.length-i}</td>
+      <td>${escHtml(r.name||'—')}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--accent)">${escHtml(r.pid)}</td>
+      <td style="color:var(--accent2)">#${r.celebId}</td>
+      <td><a href="${escHtml(r.url)}" target="_blank" style="color:var(--muted);font-size:11px;font-family:'Space Mono',monospace">View ↗</a></td>
+      <td class="star-cell">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</td>
+      <td style="color:var(--muted)">${escHtml(r.comment||'—')}</td>
+      <td style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace">${new Date(r.ts).toLocaleString()}</td>
+    </tr>
+  `).join('');
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ── Export CSV ── */
+function exportCSV() {
+  const results = getResults();
+  if(!results.length){ showToast('No data to export.'); return; }
+  const header = ['Participant_ID','Name','Celebrity_ID','Image_URL','Rating','Comment','Timestamp'];
+  const rows = results.map(r=>[r.pid,r.name,r.celebId,r.url,r.rating,`"${(r.comment||'').replace(/"/g,'""')}"`,r.ts]);
+  const csv = [header, ...rows].map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `facemetrics_results_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('✓ CSV downloaded!');
+}
+
+/* ── Clear All ── */
+function clearAllData() {
+  if(!confirm('Delete ALL sessions and results? This cannot be undone!')) return;
+  localStorage.removeItem(STORE_SESSIONS);
+  localStorage.removeItem(STORE_RESULTS);
+  renderResults();
+  renderAdminStats();
+  showToast('All data cleared.');
+}
+</script>
+</body>
+</html>
